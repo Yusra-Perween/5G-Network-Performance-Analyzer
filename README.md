@@ -1,74 +1,99 @@
-# 5G Network Performance Analyzer (NOC Dashboard)
+# Full-Stack 5G Network Performance Analyzer
 
-An interactive, high-fidelity **5G Network Operations Center (NOC)** performance analyzer dashboard. This application provides real-time visualization, simulation, and analysis of 5G NR (New Radio) network Key Performance Indicators (KPIs).
-
-Built with **Vite + React + Vanilla CSS** and custom SVG-based graphics, the application runs entirely in the browser with zero external plotting dependencies (eliminating package version conflicts).
+A full-stack, real-time **5G NR (New Radio) Network Operations Center (NOC) Dashboard** and database logger. This project simulates 5G Key Performance Indicators (KPIs) based on mobility physics and stores historical monitoring logs in a local SQL database.
 
 ---
 
-## 🚀 Key Features
+## 🛠️ Full-Stack Technology Stack
 
-*   **Live RF Telemetry Dashboard**: Monitors Downlink/Uplink Throughput, RSRP (Signal Strength), SINR (Signal Quality), Latency/Jitter, and Resource Block (RB) Allocation.
-*   **Interactive 5G Topology Map**: An interactive SVG map visualizing base stations (gNodeBs), sector coverage wedges, and the User Equipment (UE) traveling along path trajectories. Connection links dynamically change thickness and color to indicate link quality.
-*   **Simulation Controller**:
-    *   *Mobility Speed*: Stationary, Walking (5 km/h), Driving (60 km/h), and High-Speed Train (250 km/h) affecting handovers.
-    *   *RF Environment*: Urban, Suburban, and Rural profiles that scale Path Loss Exponents.
-    *   *Cell Load*: Low, Medium, and High load states affecting Resource Block availability.
-*   **Anomaly Injection System**: Trigger real-time RF Jamming, Handover Failures, Congestion Spikes, or localized Cell Outages (by clicking individual towers on the map).
-*   **NOC Terminal Alert Feed**: Live console reporting network events (successful handovers, coverage warnings, and radio link failures).
-*   **Automated 5G Optimizations**: Evaluates RF conditions and recommends 3GPP-aligned structural adjustments (e.g., antenna downtilts, carrier aggregation, hysteresis adjustments).
-*   **Data Logging Hub**: Export simulation logs to CSV/JSON or import historical data to replay performance logs.
+*   **Frontend**: React (Vite-driven SPA), HTML5, CSS3 (Vanilla glassmorphism style), and custom SVG-based map/chart renderers.
+*   **Backend**: Core Java (`com.sun.net.httpserver.HttpServer`) built-in HTTP server exposing CORS-compliant REST API endpoints on port `8080`.
+*   **Database**: SQLite (`sqlite-jdbc` JDBC driver) file-based SQL database auto-created locally as `network_analyzer.db`.
 
 ---
 
-## ⚙️ Mathematical Engineering Models
+## 📂 Project Directory Structure
 
-The simulation engine uses authentic telecommunications formulas to compute performance metrics:
-
-1.  **Log-Distance Path Loss Model**:
-    $$PL = PL_0 + 10 \cdot n \cdot \log_{10}(d) + X_\sigma$$
-    *Where $n$ represents the path loss exponent (Urban: 3.5, Rural: 2.3), $d$ is the distance to the gNodeB, and $X_\sigma$ is log-normal shadowing.*
-2.  **Shannon-Hartley Capacity Equation**:
-    $$C = B \cdot \log_2(1 + \text{SINR})$$
-    *Where $B$ is channel bandwidth (n78 C-band: 100MHz, mmWave: 400MHz), and throughput is scaled by UE resource block share.*
-3.  **Handover Hysteresis Decision**:
-    $$\text{RSRP}_{\text{target}} > \text{RSRP}_{\text{serving}} + \text{Hysteresis} \ (3.5\text{dB})$$
-
----
-
-## 🛠️ Local Setup & Installation
-
-1.  **Install dependencies**:
-    ```bash
-    npm install
-    ```
-2.  **Run development server**:
-    ```bash
-    npm run dev
-    ```
-3.  **Build for production**:
-    ```bash
-    npm run build
-    ```
-
----
-
-## 🐙 Deploying to GitHub
-
-This project is initialized as a Git repository. To push the code to your GitHub repository, execute the following commands in your shell:
-
-```bash
-# Verify the remote origin is set
-git remote -v
-
-# Stage all files
-git add .
-
-# Create the initial commit
-git commit -m "feat: initial commit of 5G network performance analyzer dashboard"
-
-# Push to the main branch
-git push -u origin main
+```text
+├── frontend/             # React Single-Page Application
+│   ├── src/              # Telemetry simulation, map views, SVG charts, and logs
+│   ├── public/           # Static icons and assets
+│   ├── package.json      # React project dependencies
+│   └── index.html        # Main HTML viewport
+│
+├── backend/              # Core Java HTTP server & JDBC database layer
+│   ├── Server.java       # HTTP endpoint router and CORS pre-flight handler
+│   ├── Database.java     # SQLite JDBC connector, table schemas, and transactions
+│   ├── JSONParser.java   # Custom payload parser (no heavy external dependencies)
+│   └── sqlite-jdbc-*.jar # Embedded SQLite JDBC driver jar
+│
+└── network_analyzer.db   # File-based SQLite relational database (gitignored)
 ```
 
-*Note: If you run into authentication errors, ensure your terminal is logged into GitHub CLI (`gh auth login`) or you have configured a Personal Access Token (PAT) in your Git credentials.*
+---
+
+## 📊 Database Schemas
+
+The database contains two relational tables structured with a one-to-many relationship:
+
+### 1. `sessions` Table
+Stores high-level metadata for each monitoring run:
+*   `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
+*   `name` (TEXT): Custom label entered by the user.
+*   `environment` (TEXT): Propagation profile (Urban, Suburban, Rural).
+*   `load_level` (TEXT): Traffic capacity load (Low, Medium, High).
+*   `created_at` (TIMESTAMP): Date and time of session creation.
+
+### 2. `telemetry_records` Table
+Stores detailed time-series telemetry data logged for each simulation second:
+*   `id` (INTEGER PRIMARY KEY AUTOINCREMENT)
+*   `session_id` (INTEGER): Foreign key referencing `sessions(id)`.
+*   `time` (INTEGER): Elapsed simulation tick.
+*   `serving_cell` (TEXT): Serving tower name.
+*   `rsrp` (REAL): Signal strength (dBm).
+*   `sinr` (REAL): Signal quality ratio (dB).
+*   `rsrq` (REAL): Signal quality quality (dB).
+*   `dl_throughput` (REAL): Downlink Speed (Mbps).
+*   `ul_throughput` (REAL): Uplink Speed (Mbps).
+*   `latency` (REAL): RTT Ping (ms).
+*   `jitter` (REAL): Latency fluctuation (ms).
+*   `rb_usage` (INTEGER): Active Resource Blocks allocated (%).
+
+---
+
+## ⚙️ Core Engineering Principles
+
+1.  **RF Propagation (Path Loss)**:
+    $$PL = PL_0 + 10 \cdot n \cdot \log_{10}(d) + X_\sigma$$
+    Calculates RSRP and SINR decay across Urban ($n=3.5$), Suburban ($n=3.0$), and Rural ($n=2.3$) path-loss factors.
+2.  **Capacity (Throughput)**:
+    $$\text{Capacity} = \text{Bandwidth} \cdot \log_2(1 + \text{SINR}) \cdot \eta_{\text{modulation}}$$
+    Applies the Shannon-Hartley theorem, scaling user throughput based on network load and resource block scheduling shares.
+3.  **A3 Handover Trigger**:
+    $$\text{RSRP}_{\text{target}} > \text{RSRP}_{\text{serving}} + 3.5\text{dB}$$
+
+---
+
+## 🚀 Running the Project Locally
+
+### 1. Start the Java Backend
+Navigate to the `backend/` directory, compile the Java files, and start the server:
+```powershell
+# Compile the Java classes
+javac -cp sqlite-jdbc-3.27.2.1.jar *.java
+
+# Start the server
+java -cp ".;sqlite-jdbc-3.27.2.1.jar" Server
+```
+*You should see a message: `SQLite Database initialized. Tables verified.` and `Java HTTP Server started on http://localhost:8080/api/sessions`.*
+
+### 2. Start the React Frontend
+Navigate to the `frontend/` directory, install packages, and start the development server:
+```bash
+# Install node packages
+npm install
+
+# Start Vite server
+npm run dev
+```
+*Open `http://localhost:5173` in your browser. Record a session, hit "Save to DB", and check that it creates/stores the session locally!*
